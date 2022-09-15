@@ -22,7 +22,7 @@ type Customer struct {
 	CustomerName string
 	Address      string
 	Birth        time.Time
-	Rool         string
+	Role         string
 }
 
 type Store struct {
@@ -67,31 +67,62 @@ func connectDB() *gorm.DB {
 	return db
 }
 
-func search(db *gorm.DB, CustomerId string, Latitude float64, Longitude float64) ([]string, []string, bool) {
+func search(db *gorm.DB, CustomerId string, Latitude float64, Longitude float64) ([]string, []string, []string, []int, bool) {
 	var (
-		users      = make([]User, 0, 10)
+		stores     = make([]Store, 0, 10)
+		customer   Customer
 		storeIds   = make([]string, 0, 10)
 		storeNames = make([]string, 0, 10)
+		categories = make([]string, 0, 10)
+		prices     = make([]int, 0, 10)
 	)
-	price := 800
-	if db.Find(&users, "price = ?", price); len(users) == 0 {
-		fmt.Printf("Error: 条件に一致するユーザがいません: %d in search\n", price)
-		return []string{}, []string{}, false
+	timeLocation, _ := time.LoadLocation("Asia/Tokyo")
+	now := time.Now().In(timeLocation)
+
+	if customer_err := db.First(&customer, "customer_id = ?", CustomerId).Error; customer_err != nil {
+		fmt.Printf("Error: IDに一致する顧客情報がありません: %s in search\n", CustomerId)
+		return []string{}, []string{}, []string{}, []int{}, false
 	}
 
-	for _, s := range users {
-		storeIds = append(storeIds, s.UserId)
-		storeNames = append(storeNames, s.UserName)
+	year, month, day := now.Date()
+
+	age := year - customer.Birth.Year()
+
+	if month < customer.Birth.Month() && day < customer.Birth.Day() {
+		age -= 1
 	}
 
-	return storeIds, storeNames, true
+	if db.Find(&stores, "latitude < ? AND latitude > ? AND longitude < ? AND longitude > ?", Latitude+0.09, Latitude-0.09, Longitude+0.115, Longitude-0.115); len(stores) == 0 {
+		fmt.Printf("Log: 条件に一致する飲食店がありません: %f, %f in search\n", Latitude, Longitude)
+		return []string{}, []string{}, []string{}, []int{}, true
+	}
+
+	for _, s := range stores {
+		var term Term
+		if term_err := db.First(&term, "store_id = ?", s.StoreId).Error; term_err != nil {
+			fmt.Printf("Error: IDに一致する飲食店の顧客条件情報がありません: %s in search\n", s.StoreId)
+			return []string{}, []string{}, []string{}, []int{}, false
+		}
+		if term.Gender == "" || term.Gender == customer.Gender {
+			if age >= term.MinAge && age <= term.MaxAge {
+				if term.Role == "" || term.Role == customer.Role {
+					storeIds = append(storeIds, s.StoreId)
+					storeNames = append(storeNames, s.StoreName)
+					categories = append(categories, s.Category)
+					prices = append(prices, s.Price)
+				}
+			}
+		}
+	}
+
+	return storeIds, storeNames, categories, prices, true
 }
 
 func book(db *gorm.DB, CustomerId string, StoreId string) bool {
 	return true
 }
 
-func customerSignup(db *gorm.DB, CustomerId string, CustomerName string, Gender string, Address string, Birth time.Time, Rool string, Password string) bool {
+func customerSignup(db *gorm.DB, CustomerId string, CustomerName string, Gender string, Address string, Birth time.Time, Role string, Password string) bool {
 	var customer Customer
 
 	if d_err := db.First(&customer, "customer_id = ?", CustomerId).Error; d_err != nil {
@@ -101,7 +132,7 @@ func customerSignup(db *gorm.DB, CustomerId string, CustomerName string, Gender 
 			Gender:       Gender,
 			Address:      Address,
 			Birth:        Birth,
-			Rool:         Rool,
+			Role:         Role,
 			Password:     Password,
 		}
 		if customer_err := db.Create(&customer).Error; customer_err == nil {

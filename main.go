@@ -17,6 +17,8 @@ type SearchRequest struct {
 type SearchResult struct {
 	StoreIds   []string `json:"store_ids"`
 	StoreNames []string `json:"store_names"`
+	Categories []string `json:"categories"`
+	Prices     []int    `json:"prices"`
 	Result     bool     `json:"result"`
 }
 
@@ -101,10 +103,12 @@ func main() {
 			//	StoreNames: []string{"test_name"},
 			//	Result:    true,
 			//}
-			StoreIds, StoreNames, Result := search(db, request.CustomerId, request.Latitude, request.Longitude)
+			StoreIds, StoreNames, Categories, Prices, Result := search(db, request.CustomerId, request.Latitude, request.Longitude)
 			result := &SearchResult{
 				StoreIds:   StoreIds,
 				StoreNames: StoreNames,
+				Categories: Categories,
+				Prices:     Prices,
 				Result:     Result,
 			}
 
