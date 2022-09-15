@@ -1,0 +1,30 @@
+version: "3"
+services:
+  db:
+    platform: linux/x86_64
+    image: mysql:5.7
+    container_name: db
+    environment:
+        MYSQL_ROOT_PASSWORD: root
+        MYSQL_DATABASE: db
+        MYSQL_USER: samp
+        MYSQL_PASSWORD: samp
+        TZ: 'Asia/Tokyo'
+    volumes:
+        - ./db/data:/var/lib/mysql
+        - ./db/my.cnf:/etc/mysql/conf.d/my.cnf
+        - ./db/sqls:/docker-entrypoint-initdb.d
+    ports:
+        - 3306:3306
+    command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_bin
+
+  phpmyadmin:
+      container_name: phpmyadmin
+      image: phpmyadmin/phpmyadmin
+      environment:
+          - PMA_ARBITRARY=1
+          - PMA_HOSTS=db
+          - PMA_USER=samp
+          - PMA_PASSWORD=samp
+      ports:
+          - 8000:80
