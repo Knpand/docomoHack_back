@@ -1,0 +1,26 @@
+version: "3"
+services:
+  api:
+    build: .
+    ports:
+      - "8080:8080"
+    working_dir: /app
+    tty: true
+
+  db:
+    platform: linux/x86_64
+    image: mysql:5.7
+    container_name: db
+    environment:
+        MYSQL_ROOT_PASSWORD: root
+        MYSQL_DATABASE: db
+        MYSQL_USER: samp
+        MYSQL_PASSWORD: samp
+        TZ: 'Asia/Tokyo'
+    volumes:
+        - ./db/data:/var/lib/mysql
+        - ./db/my.cnf:/etc/mysql/conf.d/my.cnf
+        - ./db/sqls:/docker-entrypoint-initdb.d
+    ports:
+        - 3306:3306
+    command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_bin
